@@ -4,7 +4,20 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run db:push:*)",
+      "Bash(npm run dev:*)",
+      "Bash(timeout /t 8)",
+      "Bash(ping:*)",
+      "Bash(npm run db:studio:*)",
+      "Bash(npx drizzle-kit:*)",
+      "Bash(npx nuxi typecheck:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx nuxi:*)",
+      "Bash(more:*)",
+      "Bash(npm run db:generate:*)",
+      "Bash(npm run db:migrate:*)"
     ]
   }
 }

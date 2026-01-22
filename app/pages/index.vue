@@ -20,43 +20,46 @@ const features = [
   },
 ]
 
-const airlines = [
-  {
-    name: 'Lufthansa Virtual',
-    code: 'DLH',
-    members: 1247,
-    flights: 45892,
-    rating: 4.9
-  },
-  {
-    name: 'Swiss Virtual',
-    code: 'SWR',
-    members: 834,
-    flights: 28341,
-    rating: 4.8
-  },
-  {
-    name: 'Austrian Virtual',
-    code: 'AUA',
-    members: 612,
-    flights: 19234,
-    rating: 4.7
-  },
-  {
-    name: 'Eurowings Virtual',
-    code: 'EWG',
-    members: 423,
-    flights: 12567,
-    rating: 4.6
-  }
-]
+// Fetch top airlines from API (show 8 on desktop, 4 on mobile)
+const { data: airlinesData, pending: airlinesPending } = await useFetch('/api/airlines?sortBy=members')
+const airlines = computed(() => (airlinesData.value?.data || []).slice(0, 8))
 
-const stats = [
-  { value: '50+', label: 'Virtual Airlines', icon: 'i-lucide-building-2' },
-  { value: '15K+', label: 'Active Pilots', icon: 'i-lucide-users' },
-  { value: '500K+', label: 'Flights Completed', icon: 'i-lucide-plane-takeoff' },
-  { value: '24/7', label: 'Live Coverage', icon: 'i-lucide-radio-tower' }
-]
+// Fetch platform statistics
+const { data: platformData } = await useFetch('/api/statistics/platform')
+const platformStats = computed(() => platformData.value?.data || {
+  totalPilots: 0,
+  totalFlights: 0,
+  totalAirlines: 0
+})
+
+const stats = computed(() => [
+  {
+    value: platformStats.value.totalAirlines > 0 ? `${platformStats.value.totalAirlines}` : '50+',
+    label: 'Virtual Airlines',
+    icon: 'i-lucide-building-2'
+  },
+  {
+    value: platformStats.value.totalPilots > 0 ? formatStatNumber(platformStats.value.totalPilots) : '15K+',
+    label: 'Active Pilots',
+    icon: 'i-lucide-users'
+  },
+  {
+    value: platformStats.value.totalFlights > 0 ? formatStatNumber(platformStats.value.totalFlights) : '500K+',
+    label: 'Flights Completed',
+    icon: 'i-lucide-plane-takeoff'
+  }
+])
+
+function formatStatNumber(num: number): string {
+  if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M'
+  if (num >= 1000) return (num / 1000).toFixed(1) + 'K'
+  return num.toString()
+}
+
+function formatNumber(num: number): string {
+  if (num >= 1000) return (num / 1000).toFixed(1) + 'K'
+  return num.toLocaleString()
+}
 </script>
 
 <template>
@@ -172,7 +175,7 @@ const stats = [
 
         <!-- Stats Bar -->
         <div class="mt-20 lg:mt-32">
-          <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div
               v-for="(stat, index) in stats"
               :key="stat.label"
@@ -299,11 +302,24 @@ const stats = [
           </NuxtLink>
         </div>
 
+        <!-- Loading State -->
+        <div v-if="airlinesPending" class="py-16 text-center">
+          <div class="inline-block w-12 h-12 border-4 border-sky-500 border-t-transparent rounded-full animate-spin" />
+          <p class="mt-4 text-gray-500 dark:text-slate-500">Loading airlines...</p>
+        </div>
+
+        <!-- No Airlines -->
+        <div v-else-if="airlines.length === 0" class="py-16 text-center text-gray-500 dark:text-slate-500">
+          <UIcon name="i-lucide-building-2" class="w-12 h-12 mx-auto mb-2 opacity-50" />
+          <p>No airlines available yet</p>
+        </div>
+
         <!-- Airlines Grid -->
-        <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div
+        <div v-else class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <NuxtLink
             v-for="airline in airlines"
             :key="airline.code"
+            :to="`/airlines/${airline.code.toLowerCase()}`"
             class="group relative p-6 rounded-2xl bg-gray-50 dark:bg-white/[0.02] border border-gray-200 dark:border-white/5 hover:border-sky-500/30 transition-all duration-300 cursor-pointer card-lift"
           >
             <!-- Airline Code Badge -->
@@ -313,7 +329,7 @@ const stats = [
               </div>
               <div class="flex items-center gap-1 text-amber-500">
                 <UIcon name="i-lucide-star" class="w-4 h-4 fill-current" />
-                <span class="text-sm font-medium">{{ airline.rating }}</span>
+                <span class="text-sm font-medium">{{ Number(airline.rating).toFixed(1) }}</span>
               </div>
             </div>
 
@@ -329,7 +345,7 @@ const stats = [
                 <span class="text-gray-500 dark:text-slate-500 ml-1">Pilots</span>
               </div>
               <div>
-                <span class="text-gray-900 dark:text-white font-semibold">{{ (airline.flights / 1000).toFixed(1) }}K</span>
+                <span class="text-gray-900 dark:text-white font-semibold">{{ formatNumber(airline.flights) }}</span>
                 <span class="text-gray-500 dark:text-slate-500 ml-1">Flights</span>
               </div>
             </div>
@@ -338,7 +354,7 @@ const stats = [
             <div class="absolute bottom-6 right-6 w-8 h-8 rounded-full bg-sky-500/0 group-hover:bg-sky-500/10 flex items-center justify-center transition-all">
               <UIcon name="i-lucide-arrow-up-right" class="w-4 h-4 text-sky-600 dark:text-sky-400 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
-          </div>
+          </NuxtLink>
         </div>
       </UContainer>
     </section>
@@ -443,21 +459,25 @@ const stats = [
             </p>
 
             <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <UButton
-                size="xl"
-                color="white"
-                class="font-display font-semibold px-10 text-sky-600"
-              >
-                <UIcon name="i-lucide-log-in" class="w-5 h-5 mr-2" />
-                Login with VATSIM
-              </UButton>
-              <UButton
-                size="xl"
-                variant="outline"
-                class="font-display font-semibold px-10 border-white/30 text-white hover:bg-white/10"
-              >
-                Learn More
-              </UButton>
+              <NuxtLink to="/api/auth/login">
+                <UButton
+                  size="xl"
+                  color="white"
+                  class="font-display font-semibold px-10 text-sky-600"
+                >
+                  <UIcon name="i-lucide-log-in" class="w-5 h-5 mr-2" />
+                  Login with VATSIM
+                </UButton>
+              </NuxtLink>
+              <NuxtLink to="/airlines">
+                <UButton
+                  size="xl"
+                  variant="outline"
+                  class="font-display font-semibold px-10 border-white/30 text-white hover:bg-white/10"
+                >
+                  Browse Airlines
+                </UButton>
+              </NuxtLink>
             </div>
           </div>
         </div>

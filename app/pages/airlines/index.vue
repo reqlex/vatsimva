@@ -33,8 +33,24 @@ const sortOptions = [
   { value: 'newest', label: 'Newest' }
 ]
 
-// Mock data - würde später von einer API kommen
-const airlines = ref([
+// Fetch airlines from API
+const apiUrl = computed(() => {
+  const params = new URLSearchParams()
+  if (searchQuery.value) params.append('search', searchQuery.value)
+  if (selectedRegion.value !== 'all') params.append('region', selectedRegion.value)
+  if (selectedSize.value !== 'all') params.append('size', selectedSize.value)
+  params.append('sortBy', sortBy.value)
+  return `/api/airlines?${params.toString()}`
+})
+
+const { data: airlinesData, pending: airlinesPending, refresh: refreshAirlines } = await useFetch(apiUrl, {
+  watch: [searchQuery, selectedRegion, selectedSize, sortBy]
+})
+
+const airlines = computed(() => airlinesData.value?.data || [])
+
+// Fallback mock data for demo purposes
+const mockAirlines = ref([
   {
     id: 1,
     name: 'Lufthansa Virtual',
@@ -229,45 +245,8 @@ const airlines = ref([
   }
 ])
 
-const filteredAirlines = computed(() => {
-  let result = [...airlines.value]
-
-  // Search filter
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    result = result.filter(a =>
-      a.name.toLowerCase().includes(query) ||
-      a.code.toLowerCase().includes(query) ||
-      a.description.toLowerCase().includes(query)
-    )
-  }
-
-  // Region filter
-  if (selectedRegion.value !== 'all') {
-    result = result.filter(a => a.region === selectedRegion.value)
-  }
-
-  // Size filter
-  if (selectedSize.value !== 'all') {
-    result = result.filter(a => {
-      if (selectedSize.value === 'large') return a.members >= 500
-      if (selectedSize.value === 'medium') return a.members >= 100 && a.members < 500
-      if (selectedSize.value === 'small') return a.members < 100
-      return true
-    })
-  }
-
-  // Sorting
-  result.sort((a, b) => {
-    if (sortBy.value === 'members') return b.members - a.members
-    if (sortBy.value === 'flights') return b.flights - a.flights
-    if (sortBy.value === 'rating') return b.rating - a.rating
-    if (sortBy.value === 'newest') return Number(b.founded) - Number(a.founded)
-    return 0
-  })
-
-  return result
-})
+// Filtering and sorting is now done by API
+const filteredAirlines = computed(() => airlines.value)
 
 const stats = computed(() => ({
   totalAirlines: airlines.value.length,
@@ -392,11 +371,18 @@ function formatNumber(num: number): string {
       <UContainer>
         <!-- Results count -->
         <div class="mb-6 text-sm text-gray-500 dark:text-slate-500">
-          Showing {{ filteredAirlines.length }} of {{ airlines.length }} airlines
+          <span v-if="!airlinesPending">Showing {{ filteredAirlines.length }} airlines</span>
+          <span v-else>Loading...</span>
+        </div>
+
+        <!-- Loading State -->
+        <div v-if="airlinesPending" class="py-16 text-center">
+          <div class="inline-block w-12 h-12 border-4 border-sky-500 border-t-transparent rounded-full animate-spin" />
+          <p class="mt-4 text-gray-500 dark:text-slate-500">Loading airlines...</p>
         </div>
 
         <!-- Grid -->
-        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div v-else class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           <div
             v-for="airline in filteredAirlines"
             :key="airline.id"

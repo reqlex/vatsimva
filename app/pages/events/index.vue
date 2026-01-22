@@ -15,8 +15,21 @@ const categories = [
   { value: 'competition', label: 'Competitions', icon: 'i-lucide-trophy' }
 ]
 
-// Mock Events Data
-const events = ref([
+// Fetch events from API
+const apiUrl = computed(() => {
+  const params = new URLSearchParams()
+  if (selectedCategory.value !== 'all') params.append('category', selectedCategory.value)
+  return `/api/events?${params.toString()}`
+})
+
+const { data: eventsData, pending: eventsPending } = await useFetch(apiUrl, {
+  watch: [selectedCategory]
+})
+
+const events = computed(() => eventsData.value?.data || [])
+
+// Mock Events Data (for fallback/demo)
+const mockEvents = ref([
   {
     id: 1,
     title: 'Transatlantic Tuesday',
@@ -155,10 +168,8 @@ const events = ref([
   }
 ])
 
-const filteredEvents = computed(() => {
-  if (selectedCategory.value === 'all') return events.value
-  return events.value.filter(e => e.category === selectedCategory.value)
-})
+// Category filtering is done by API
+const filteredEvents = computed(() => events.value)
 
 const featuredEvents = computed(() => events.value.filter(e => e.featured))
 
@@ -220,11 +231,23 @@ function getParticipationPercentage(participants: number, max: number): number {
           <h2 class="font-display text-2xl font-bold text-gray-900 dark:text-white">Featured Events</h2>
           <div class="flex items-center gap-1 px-3 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400">
             <UIcon name="i-lucide-star" class="w-4 h-4" />
-            <span class="text-sm font-medium">{{ featuredEvents.length }} Featured</span>
+            <span class="text-sm font-medium">{{ eventsPending ? '...' : featuredEvents.length }} Featured</span>
           </div>
         </div>
 
-        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Loading State -->
+        <div v-if="eventsPending" class="py-16 text-center">
+          <div class="inline-block w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
+          <p class="mt-4 text-gray-500 dark:text-slate-500">Loading events...</p>
+        </div>
+
+        <!-- No Featured Events -->
+        <div v-else-if="featuredEvents.length === 0" class="py-16 text-center text-gray-500 dark:text-slate-500">
+          <UIcon name="i-lucide-star-off" class="w-12 h-12 mx-auto mb-2 opacity-50" />
+          <p>No featured events at the moment</p>
+        </div>
+
+        <div v-else class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           <div
             v-for="event in featuredEvents"
             :key="event.id"
@@ -332,8 +355,14 @@ function getParticipationPercentage(participants: number, max: number): number {
           </div>
         </div>
 
+        <!-- Loading State -->
+        <div v-if="eventsPending" class="py-16 text-center">
+          <div class="inline-block w-12 h-12 border-4 border-sky-500 border-t-transparent rounded-full animate-spin" />
+          <p class="mt-4 text-gray-500 dark:text-slate-500">Loading events...</p>
+        </div>
+
         <!-- Events Grid -->
-        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div v-else class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           <div
             v-for="event in filteredEvents"
             :key="event.id"

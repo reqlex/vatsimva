@@ -4,57 +4,40 @@ useSeoMeta({
   description: 'Real-time statistics, leaderboards and activity tracking for virtual airlines on VATSIM.'
 })
 
-// Live Stats
+// Fetch platform statistics
+const { data: platformData, pending: platformPending } = await useFetch('/api/statistics/platform')
+const platformStats = computed(() => platformData.value?.data || {
+  totalPilots: 0,
+  totalFlights: 0,
+  totalHours: 0,
+  totalAirlines: 0,
+  totalRoutes: 0,
+  avgFlightsPerDay: 0,
+  vatsimStats: {
+    totalPilotHours: 0,
+    totalAtcHours: 0
+  }
+})
+
+// Fetch top pilots
+const { data: pilotsData, pending: pilotsPending } = await useFetch('/api/statistics/leaderboard/pilots?limit=10')
+const topPilots = computed(() => pilotsData.value?.data || [])
+
+// Fetch top airlines
+const { data: airlinesData, pending: airlinesPending } = await useFetch('/api/statistics/leaderboard/airlines?limit=8')
+const topAirlines = computed(() => airlinesData.value?.data || [])
+
+// Fetch recent activity
+const { data: activityData, pending: activityPending } = await useFetch('/api/statistics/activity?limit=10')
+const recentActivity = computed(() => activityData.value?.data || [])
+
+// Live Stats (TODO: Implement real-time data from VATSIM API)
 const liveStats = ref({
-  activeFlights: 127,
-  pilotsOnline: 89,
-  flightsToday: 342,
-  hoursToday: 891
+  activeFlights: 0,
+  pilotsOnline: 0,
+  flightsToday: 0,
+  hoursToday: 0
 })
-
-// Platform Statistics
-const platformStats = ref({
-  totalPilots: 15423,
-  totalFlights: 523847,
-  totalHours: 1248392,
-  totalAirlines: 52,
-  totalRoutes: 8934,
-  avgFlightsPerDay: 412
-})
-
-// Top Airlines Leaderboard
-const topAirlines = ref([
-  { rank: 1, name: 'Delta Virtual Airlines', code: 'DAL', flights: 89432, hours: 214567, pilots: 2156, change: 2 },
-  { rank: 2, name: 'Emirates Virtual', code: 'UAE', flights: 67234, hours: 178432, pilots: 1876, change: 0 },
-  { rank: 3, name: 'Lufthansa Virtual', code: 'DLH', flights: 45892, hours: 112345, pilots: 1247, change: 1 },
-  { rank: 4, name: 'Air France Virtual', code: 'AFR', flights: 41234, hours: 98234, pilots: 1123, change: -2 },
-  { rank: 5, name: 'Singapore Virtual', code: 'SIA', flights: 34567, hours: 87654, pilots: 943, change: 1 },
-  { rank: 6, name: 'Swiss Virtual', code: 'SWR', flights: 28341, hours: 71234, pilots: 834, change: 0 },
-  { rank: 7, name: 'Qantas Virtual', code: 'QFA', flights: 25678, hours: 64532, pilots: 687, change: 3 },
-  { rank: 8, name: 'LATAM Virtual', code: 'LAN', flights: 21098, hours: 52876, pilots: 567, change: -1 }
-])
-
-// Top Pilots Leaderboard
-const topPilots = ref([
-  { rank: 1, name: 'MaxAviation', airline: 'DAL', flights: 1247, hours: 3421, rating: 4.98 },
-  { rank: 2, name: 'SkyCapt_Mike', airline: 'UAE', flights: 1189, hours: 3198, rating: 4.97 },
-  { rank: 3, name: 'FlyingDutchman', airline: 'DLH', flights: 1156, hours: 2987, rating: 4.96 },
-  { rank: 4, name: 'AeroQueen', airline: 'AFR', flights: 1098, hours: 2876, rating: 4.95 },
-  { rank: 5, name: 'JetStreamPro', airline: 'SIA', flights: 1034, hours: 2654, rating: 4.94 },
-  { rank: 6, name: 'CaptainCloud', airline: 'DLH', flights: 987, hours: 2543, rating: 4.93 },
-  { rank: 7, name: 'WingCommander', airline: 'UAE', flights: 945, hours: 2432, rating: 4.92 },
-  { rank: 8, name: 'AltitudePilot', airline: 'DAL', flights: 912, hours: 2321, rating: 4.91 }
-])
-
-// Recent Activity Feed
-const recentActivity = ref([
-  { type: 'landing', pilot: 'MaxAviation', flight: 'DAL421', route: 'KJFK → KLAX', time: '2 min ago', aircraft: 'B777-300ER' },
-  { type: 'takeoff', pilot: 'SkyCapt_Mike', flight: 'UAE204', route: 'OMDB → EGLL', time: '5 min ago', aircraft: 'A380-800' },
-  { type: 'landing', pilot: 'FlyingDutchman', flight: 'DLH456', route: 'EDDF → KJFK', time: '8 min ago', aircraft: 'A350-900' },
-  { type: 'takeoff', pilot: 'AeroQueen', flight: 'AFR089', route: 'LFPG → RJTT', time: '12 min ago', aircraft: 'B787-9' },
-  { type: 'landing', pilot: 'JetStreamPro', flight: 'SIA321', route: 'WSSS → VHHH', time: '15 min ago', aircraft: 'A350-900' },
-  { type: 'takeoff', pilot: 'CaptainCloud', flight: 'DLH789', route: 'EDDM → LEMD', time: '18 min ago', aircraft: 'A320neo' }
-])
 
 // Activity by Hour (Chart data)
 const hourlyActivity = ref([
@@ -201,7 +184,15 @@ function getRankChange(change: number): { icon: string; color: string } {
 
               <!-- Airlines Leaderboard -->
               <div v-if="activeLeaderboard === 'airlines'" class="divide-y divide-gray-200 dark:divide-white/5">
+                <div v-if="airlinesPending" class="p-8 text-center">
+                  <div class="inline-block w-8 h-8 border-4 border-sky-500 border-t-transparent rounded-full animate-spin" />
+                  <p class="mt-2 text-sm text-gray-500 dark:text-slate-500">Loading airlines...</p>
+                </div>
+                <div v-else-if="topAirlines.length === 0" class="p-8 text-center text-gray-500 dark:text-slate-500">
+                  No airlines data available yet
+                </div>
                 <div
+                  v-else
                   v-for="airline in topAirlines"
                   :key="airline.code"
                   class="flex items-center gap-4 p-4 hover:bg-gray-100 dark:hover:bg-white/[0.02] transition-colors"
@@ -222,11 +213,14 @@ function getRankChange(change: number): { icon: string; color: string } {
                   <!-- Airline Info -->
                   <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2">
-                      <span class="font-semibold text-gray-900 dark:text-white truncate">{{ airline.name }}</span>
+                      <NuxtLink :to="`/airlines/${airline.code.toLowerCase()}`" class="font-semibold text-gray-900 dark:text-white truncate hover:text-sky-600 dark:hover:text-sky-400 transition-colors">
+                        {{ airline.name }}
+                      </NuxtLink>
                       <span class="text-xs font-mono text-gray-400 dark:text-slate-500">{{ airline.code }}</span>
+                      <UIcon v-if="airline.verified" name="i-lucide-badge-check" class="w-4 h-4 text-sky-500" title="Verified" />
                     </div>
                     <div class="text-sm text-gray-500 dark:text-slate-500">
-                      {{ airline.pilots.toLocaleString() }} pilots
+                      {{ airline.pilots.toLocaleString() }} pilots · {{ airline.region }}
                     </div>
                   </div>
 
@@ -243,7 +237,7 @@ function getRankChange(change: number): { icon: string; color: string } {
                   </div>
 
                   <!-- Change Indicator -->
-                  <div :class="getRankChange(airline.change).color">
+                  <div v-if="airline.change !== 0" :class="getRankChange(airline.change).color">
                     <UIcon :name="getRankChange(airline.change).icon" class="w-5 h-5" />
                   </div>
                 </div>
@@ -251,9 +245,17 @@ function getRankChange(change: number): { icon: string; color: string } {
 
               <!-- Pilots Leaderboard -->
               <div v-if="activeLeaderboard === 'pilots'" class="divide-y divide-gray-200 dark:divide-white/5">
+                <div v-if="pilotsPending" class="p-8 text-center">
+                  <div class="inline-block w-8 h-8 border-4 border-sky-500 border-t-transparent rounded-full animate-spin" />
+                  <p class="mt-2 text-sm text-gray-500 dark:text-slate-500">Loading pilots...</p>
+                </div>
+                <div v-else-if="topPilots.length === 0" class="p-8 text-center text-gray-500 dark:text-slate-500">
+                  No pilots data available yet
+                </div>
                 <div
+                  v-else
                   v-for="pilot in topPilots"
-                  :key="pilot.name"
+                  :key="pilot.cid"
                   class="flex items-center gap-4 p-4 hover:bg-gray-100 dark:hover:bg-white/[0.02] transition-colors"
                 >
                   <!-- Rank -->
@@ -272,10 +274,16 @@ function getRankChange(change: number): { icon: string; color: string } {
                   <!-- Pilot Info -->
                   <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2">
-                      <span class="font-semibold text-gray-900 dark:text-white">{{ pilot.name }}</span>
+                      <NuxtLink :to="`/pilot/${pilot.cid}`" class="font-semibold text-gray-900 dark:text-white hover:text-sky-600 dark:hover:text-sky-400 transition-colors">
+                        {{ pilot.name }}
+                      </NuxtLink>
+                      <span v-if="pilot.country" class="text-xs">{{ pilot.country }}</span>
                     </div>
                     <div class="text-sm text-gray-500 dark:text-slate-500">
                       {{ pilot.airline }}
+                      <span v-if="pilot.vatsimHours > 0" class="ml-2 text-xs text-emerald-600 dark:text-emerald-400">
+                        {{ Math.round(pilot.vatsimHours) }}h VATSIM
+                      </span>
                     </div>
                   </div>
 
@@ -286,15 +294,15 @@ function getRankChange(change: number): { icon: string; color: string } {
                       <div class="text-gray-500 dark:text-slate-500">flights</div>
                     </div>
                     <div class="text-right">
-                      <div class="font-semibold text-gray-900 dark:text-white">{{ formatNumber(pilot.hours) }}</div>
+                      <div class="font-semibold text-gray-900 dark:text-white">{{ formatNumber(Math.round(pilot.hours)) }}</div>
                       <div class="text-gray-500 dark:text-slate-500">hours</div>
                     </div>
                   </div>
 
-                  <!-- Rating -->
-                  <div class="flex items-center gap-1 text-amber-500">
-                    <UIcon name="i-lucide-star" class="w-4 h-4 fill-current" />
-                    <span class="text-sm font-medium">{{ pilot.rating }}</span>
+                  <!-- Rating Badge -->
+                  <div v-if="pilot.pilotRating" class="flex items-center gap-1 px-2 py-1 rounded bg-sky-500/10 text-sky-600 dark:text-sky-400">
+                    <UIcon name="i-lucide-award" class="w-4 h-4" />
+                    <span class="text-xs font-medium">{{ pilot.pilotRating }}</span>
                   </div>
                 </div>
               </div>
@@ -333,7 +341,10 @@ function getRankChange(change: number): { icon: string; color: string } {
             <div class="rounded-2xl bg-gray-50 dark:bg-white/[0.02] border border-gray-200 dark:border-white/5 p-6">
               <h3 class="font-display font-semibold text-gray-900 dark:text-white text-lg mb-6">All-Time Statistics</h3>
 
-              <div class="space-y-4">
+              <div v-if="platformPending" class="py-8 text-center">
+                <div class="inline-block w-8 h-8 border-4 border-sky-500 border-t-transparent rounded-full animate-spin" />
+              </div>
+              <div v-else class="space-y-4">
                 <div class="flex items-center justify-between py-3 border-b border-gray-200 dark:border-white/5">
                   <span class="text-gray-600 dark:text-slate-400">Total Pilots</span>
                   <span class="font-display font-bold text-gray-900 dark:text-white">{{ formatNumber(platformStats.totalPilots) }}</span>
@@ -343,16 +354,34 @@ function getRankChange(change: number): { icon: string; color: string } {
                   <span class="font-display font-bold text-gray-900 dark:text-white">{{ formatNumber(platformStats.totalFlights) }}</span>
                 </div>
                 <div class="flex items-center justify-between py-3 border-b border-gray-200 dark:border-white/5">
-                  <span class="text-gray-600 dark:text-slate-400">Flight Hours</span>
-                  <span class="font-display font-bold text-gray-900 dark:text-white">{{ formatNumber(platformStats.totalHours) }}</span>
+                  <span class="text-gray-600 dark:text-slate-400">Platform Hours</span>
+                  <span class="font-display font-bold text-gray-900 dark:text-white">{{ formatNumber(Math.round(platformStats.totalHours)) }}</span>
+                </div>
+                <div class="flex items-center justify-between py-3 border-b border-gray-200 dark:border-white/5">
+                  <span class="text-gray-600 dark:text-slate-400">
+                    <span class="flex items-center gap-1">
+                      VATSIM Pilot Hours
+                      <UIcon name="i-lucide-plane" class="w-3 h-3 text-emerald-500" />
+                    </span>
+                  </span>
+                  <span class="font-display font-bold text-emerald-600 dark:text-emerald-400">{{ formatNumber(platformStats.vatsimStats?.totalPilotHours || 0) }}</span>
+                </div>
+                <div class="flex items-center justify-between py-3 border-b border-gray-200 dark:border-white/5">
+                  <span class="text-gray-600 dark:text-slate-400">
+                    <span class="flex items-center gap-1">
+                      VATSIM ATC Hours
+                      <UIcon name="i-lucide-radio-tower" class="w-3 h-3 text-sky-500" />
+                    </span>
+                  </span>
+                  <span class="font-display font-bold text-sky-600 dark:text-sky-400">{{ formatNumber(platformStats.vatsimStats?.totalAtcHours || 0) }}</span>
                 </div>
                 <div class="flex items-center justify-between py-3 border-b border-gray-200 dark:border-white/5">
                   <span class="text-gray-600 dark:text-slate-400">Virtual Airlines</span>
                   <span class="font-display font-bold text-gray-900 dark:text-white">{{ platformStats.totalAirlines }}</span>
                 </div>
                 <div class="flex items-center justify-between py-3 border-b border-gray-200 dark:border-white/5">
-                  <span class="text-gray-600 dark:text-slate-400">Available Routes</span>
-                  <span class="font-display font-bold text-gray-900 dark:text-white">{{ formatNumber(platformStats.totalRoutes) }}</span>
+                  <span class="text-gray-600 dark:text-slate-400">Distance Flown</span>
+                  <span class="font-display font-bold text-gray-900 dark:text-white">{{ formatNumber(platformStats.totalDistance) }} NM</span>
                 </div>
                 <div class="flex items-center justify-between py-3">
                   <span class="text-gray-600 dark:text-slate-400">Avg. Flights/Day</span>
@@ -364,14 +393,24 @@ function getRankChange(change: number): { icon: string; color: string } {
             <!-- Live Activity Feed -->
             <div class="rounded-2xl bg-gray-50 dark:bg-white/[0.02] border border-gray-200 dark:border-white/5 p-6">
               <div class="flex items-center justify-between mb-6">
-                <h3 class="font-display font-semibold text-gray-900 dark:text-white text-lg">Live Activity</h3>
+                <h3 class="font-display font-semibold text-gray-900 dark:text-white text-lg">Recent Activity</h3>
                 <span class="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
                   <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                   Live
                 </span>
               </div>
 
-              <div class="space-y-4">
+              <div v-if="activityPending" class="py-8 text-center">
+                <div class="inline-block w-8 h-8 border-4 border-sky-500 border-t-transparent rounded-full animate-spin" />
+                <p class="mt-2 text-sm text-gray-500 dark:text-slate-500">Loading activity...</p>
+              </div>
+
+              <div v-else-if="recentActivity.length === 0" class="py-8 text-center text-gray-500 dark:text-slate-500">
+                <UIcon name="i-lucide-inbox" class="w-12 h-12 mx-auto mb-2 opacity-50" />
+                <p>No recent activity yet</p>
+              </div>
+
+              <div v-else class="space-y-4">
                 <div
                   v-for="(activity, index) in recentActivity"
                   :key="index"
@@ -389,8 +428,18 @@ function getRankChange(change: number): { icon: string; color: string } {
                   </div>
                   <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2">
-                      <span class="font-medium text-gray-900 dark:text-white text-sm">{{ activity.pilot }}</span>
+                      <NuxtLink
+                        v-if="activity.pilotCid"
+                        :to="`/pilot/${activity.pilotCid}`"
+                        class="font-medium text-gray-900 dark:text-white text-sm hover:text-sky-600 dark:hover:text-sky-400 transition-colors"
+                      >
+                        {{ activity.pilot }}
+                      </NuxtLink>
+                      <span v-else class="font-medium text-gray-900 dark:text-white text-sm">{{ activity.pilot }}</span>
                       <span class="text-xs font-mono text-gray-400 dark:text-slate-500">{{ activity.flight }}</span>
+                      <span v-if="activity.airline" class="text-xs px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-600 dark:text-sky-400 font-medium">
+                        {{ activity.airline }}
+                      </span>
                     </div>
                     <div class="text-xs text-gray-500 dark:text-slate-500 truncate">
                       {{ activity.route }} · {{ activity.aircraft }}
@@ -399,13 +448,6 @@ function getRankChange(change: number): { icon: string; color: string } {
                   <span class="text-xs text-gray-400 dark:text-slate-500 whitespace-nowrap">{{ activity.time }}</span>
                 </div>
               </div>
-
-              <NuxtLink to="/map" class="block mt-6">
-                <UButton variant="outline" class="w-full">
-                  <UIcon name="i-lucide-map" class="w-4 h-4 mr-2" />
-                  View Live Map
-                </UButton>
-              </NuxtLink>
             </div>
           </div>
         </div>

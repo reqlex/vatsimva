@@ -1,4 +1,4 @@
-import type { VatsimTokenResponse, VatsimUser, User } from '~/types/auth'
+import type { VatsimTokenResponse, VatsimUser, User, VatsimPilotStatistics } from '~/types/auth'
 
 const VATSIM_SCOPES = ['full_name', 'email', 'vatsim_details', 'country']
 
@@ -96,6 +96,18 @@ export async function refreshAccessToken(refreshToken: string): Promise<VatsimTo
       client_secret: clientSecret,
       refresh_token: refreshToken
     }).toString()
+  })
+
+  return response
+}
+
+export async function fetchVatsimStatistics(cid: string): Promise<VatsimPilotStatistics> {
+  const { oauthUrl } = getVatsimConfig()
+
+  const response = await $fetch<VatsimPilotStatistics>(`${oauthUrl}/api/ratings/pilot/${cid}`, {
+    headers: {
+      'Accept': 'application/json'
+    }
   })
 
   return response

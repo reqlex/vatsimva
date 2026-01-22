@@ -1,4 +1,7 @@
 import type { SessionData } from '~/types/auth'
+import { db } from '../../database/db'
+import { pilots } from '../../database/schema'
+import { eq } from 'drizzle-orm'
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
@@ -37,6 +40,62 @@ export default defineEventHandler(async (event) => {
 
     // Transform to our user format
     const user = transformVatsimUser(vatsimUser)
+
+    // Fetch VATSIM statistics in background (non-blocking)
+    let vatsimStats = null
+    try {
+      vatsimStats = await fetchVatsimStatistics(user.cid)
+    } catch (err) {
+      console.warn('Failed to fetch VATSIM statistics on login:', err)
+      // Continue even if stats fetch fails
+    }
+
+    // Create or update pilot in database
+    const existingPilot = await db.query.pilots.findFirst({
+      where: eq(pilots.cid, user.cid)
+    })
+
+    if (existingPilot) {
+      // Update existing pilot
+      await db.update(pilots)
+        .set({
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          country: user.country,
+          rating: user.rating,
+          pilotRating: user.pilotRating,
+          division: user.division,
+          vatsimStats: vatsimStats ? {
+            atc: vatsimStats.atc,
+            pilot: vatsimStats.pilot,
+            regDate: vatsimStats.reg_date,
+            lastRatingChange: vatsimStats.lastratingchange
+          } : undefined,
+          vatsimStatsUpdatedAt: vatsimStats ? new Date() : undefined,
+          updatedAt: new Date()
+        })
+        .where(eq(pilots.cid, user.cid))
+    } else {
+      // Create new pilot
+      await db.insert(pilots).values({
+        cid: user.cid,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        country: user.country,
+        rating: user.rating,
+        pilotRating: user.pilotRating,
+        division: user.division,
+        vatsimStats: vatsimStats ? {
+          atc: vatsimStats.atc,
+          pilot: vatsimStats.pilot,
+          regDate: vatsimStats.reg_date,
+          lastRatingChange: vatsimStats.lastratingchange
+        } : undefined,
+        vatsimStatsUpdatedAt: vatsimStats ? new Date() : undefined
+      })
+    }
 
     // Create session
     const sessionData: SessionData = {

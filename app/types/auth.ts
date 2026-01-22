@@ -76,3 +76,37 @@ export interface AuthState {
   isAuthenticated: boolean
   isLoading: boolean
 }
+
+// VATSIM Pilot Statistics from ratings API
+export interface VatsimPilotStatistics {
+  id: string // CID
+  rating: number
+  pilotrating: number
+  susp_date: string | null
+  reg_date: string
+  region: string
+  division: string
+  subdivision: string | null
+  lastratingchange: string
+
+  // Statistics data
+  atc?: {
+    hours: number
+    s1: number
+    s2: number
+    s3: number
+    c1: number
+    c3: number
+    i1: number
+    i3: number
+    sup: number
+    adm: number
+  }
+  pilot?: {
+    hours: number
+    p1?: number
+    p2?: number
+    p3?: number
+    p4?: number
+  }
+}
