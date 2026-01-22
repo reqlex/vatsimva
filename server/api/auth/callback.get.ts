@@ -1,6 +1,6 @@
 import type { SessionData } from '~/types/auth'
-import { db } from '../../database/db'
-import { pilots } from '../../database/schema'
+import { db } from '~/server/database/db'
+import { pilots } from '~/server/database/schema'
 import { eq } from 'drizzle-orm'
 
 export default defineEventHandler(async (event) => {
