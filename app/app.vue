@@ -46,7 +46,7 @@ const userDropdown = computed(() => [
     {
       label: 'My Airlines',
       icon: 'i-lucide-building-2',
-      to: '/my-airlines'
+      to: '/my-airline'
     }
   ],
   [
@@ -346,18 +346,23 @@ watch(() => route.path, () => {
             <h4 class="font-display font-semibold text-gray-900 dark:text-white mb-4 text-sm tracking-wide uppercase">Legal</h4>
             <ul class="space-y-3">
               <li>
-                <NuxtLink to="#" class="text-sm text-gray-600 dark:text-slate-400 hover:text-sky-600 dark:hover:text-sky-400 transition-colors">
+                <NuxtLink to="/legal/privacy" class="text-sm text-gray-600 dark:text-slate-400 hover:text-sky-600 dark:hover:text-sky-400 transition-colors">
                   Privacy Policy
                 </NuxtLink>
               </li>
               <li>
-                <NuxtLink to="#" class="text-sm text-gray-600 dark:text-slate-400 hover:text-sky-600 dark:hover:text-sky-400 transition-colors">
+                <NuxtLink to="/legal/imprint" class="text-sm text-gray-600 dark:text-slate-400 hover:text-sky-600 dark:hover:text-sky-400 transition-colors">
                   Imprint
                 </NuxtLink>
               </li>
               <li>
-                <NuxtLink to="#" class="text-sm text-gray-600 dark:text-slate-400 hover:text-sky-600 dark:hover:text-sky-400 transition-colors">
+                <NuxtLink to="/legal/terms" class="text-sm text-gray-600 dark:text-slate-400 hover:text-sky-600 dark:hover:text-sky-400 transition-colors">
                   Terms of Service
+                </NuxtLink>
+              </li>
+              <li>
+                <NuxtLink to="/legal/cookies" class="text-sm text-gray-600 dark:text-slate-400 hover:text-sky-600 dark:hover:text-sky-400 transition-colors">
+                  Cookie Policy
                 </NuxtLink>
               </li>
             </ul>
